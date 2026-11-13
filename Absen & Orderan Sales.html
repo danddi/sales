@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Absen & Orderan Sales</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mu:#6b7385;--ln:#e2e5eb;--ac:#1f6feb;--ac2:#e8f0fe;--ok:#1a7f4b;--bad:#c62828;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171d;--card:#1d222b;--tx:#e8ebf1;--mu:#9aa3b5;--ln:#2d3440;--ac:#5b9bff;--ac2:#1e2b45;--ok:#4cc38a;--bad:#ef6b6b}}
+:root[data-theme="dark"]{--bg:#14171d;--card:#1d222b;--tx:#e8ebf1;--mu:#9aa3b5;--ln:#2d3440;--ac:#5b9bff;--ac2:#1e2b45;--ok:#4cc38a;--bad:#ef6b6b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:900px;margin:0 auto;padding:12px}
+nav{display:flex;gap:6px;margin-bottom:12px}
+nav button{flex:1;padding:11px 6px;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:10px;font-weight:600;cursor:pointer}
+nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:14px;margin-bottom:12px}
+h2{font-size:17px;margin:0 0 10px}h3{font-size:15px;margin:14px 0 6px}
+label{display:block;font-size:13px;color:var(--mu);margin:8px 0 3px}
+input,select{width:100%;padding:10px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+button.p{background:var(--ac);color:#fff;border:0;padding:11px 16px;border-radius:8px;font-weight:600;cursor:pointer;width:100%;margin-top:10px}
+button.s{background:var(--ac2);color:var(--ac);border:0;padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
+button.x{background:none;border:0;color:var(--bad);cursor:pointer;font-size:18px;padding:2px 8px}
+.row{display:flex;gap:8px;align-items:flex-end}.row>*{flex:1}.row>.sm{flex:0 0 80px}.row>.xs{flex:0 0 36px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}
+th{color:var(--mu);font-weight:600;font-size:12px}td.n,th.n{text-align:right}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.stat{background:var(--ac2);border-radius:10px;padding:10px}.stat b{display:block;font-size:20px}.stat span{font-size:12px;color:var(--mu)}
+.msg{padding:9px 12px;border-radius:8px;margin-top:10px;background:var(--ac2);font-size:14px}
+.ok{color:var(--ok)}.mu{color:var(--mu);font-size:13px}
+.line{border:1px solid var(--ln);border-radius:10px;padding:8px;margin-top:8px}
+.tot{font-size:18px;font-weight:700;margin-top:10px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<nav>
+  <button data-t="absen" class="on">Absen</button>
+  <button data-t="order">Orderan</button>
+  <button data-t="total">Total Penjualan</button>
+</nav>
+<div id="status" class="msg hide"></div>
+
+<section id="absen">
+  <div class="card">
+    <h2>Absen Masuk</h2>
+    <label>Nama sales</label>
+    <select id="aSales"></select>
+    <div class="row" style="margin-top:8px"><input id="newSales" placeholder="Nama sales baru"><button class="s sm" style="flex:0 0 90px" id="addSales">+ Tambah</button></div>
+    <button class="p" id="btnAbsen">Absen Sekarang</button>
+    <div id="aMsg"></div>
+  </div>
+  <div class="card"><h2>Absen Hari Ini</h2><div class="scroll"><table><thead><tr><th>Sales</th><th>Jam</th></tr></thead><tbody id="aList"></tbody></table></div></div>
+</section>
+
+<section id="order" class="hide">
+  <div class="card">
+    <h2>Input Orderan</h2>
+    <div class="row">
+      <div><label>Sales</label><select id="oSales"></select></div>
+      <div><label>Tanggal</label><input type="date" id="oDate"></div>
+    </div>
+    <label>Nama toko</label>
+    <input id="oStore" placeholder="Nama toko" list="storeList"><datalist id="storeList"></datalist>
+    <h3>Barang</h3>
+    <div id="lines"></div>
+    <button class="s" id="addLine" style="margin-top:8px">+ Tambah barang</button>
+    <div class="tot">Total berat: <span id="oTot">0</span> kg</div>
+    <button class="p" id="saveOrder">Simpan Orderan</button>
+    <div id="oMsg"></div>
+  </div>
+</section>
+
+<section id="total" class="hide">
+  <div class="card">
+    <h2>Total Penjualan</h2>
+    <div class="row">
+      <div><label>Dari tanggal</label><input type="date" id="fFrom"></div>
+      <div><label>Sampai tanggal</label><input type="date" id="fTo"></div>
+    </div>
+    <div class="row">
+      <div><label>Sales</label><select id="fSales"></select></div>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="s" data-q="1">Hari ini</button><button class="s" data-q="7">7 hari</button><button class="s" data-q="30">30 hari</button><button class="s" data-q="m">Bulan ini</button></div>
+  </div>
+  <div class="card"><div class="stats" id="stats"></div></div>
+  <div class="card"><h2>Per Sales</h2><div class="scroll"><table><thead><tr><th>Sales</th><th class="n">Order</th><th class="n">Berat (kg)</th></tr></thead><tbody id="tSales"></tbody></table></div></div>
+  <div class="card"><h2>Per Toko</h2><div class="scroll"><table><thead><tr><th>Toko</th><th class="n">Order</th><th class="n">Berat (kg)</th></tr></thead><tbody id="tStore"></tbody></table></div></div>
+  <div class="card"><h2>Per Kelompok Berat (semua barang dengan berat sama)</h2><div class="scroll"><table><thead><tr><th>Berat/sak</th><th class="n">Jenis barang</th><th class="n">Total sak/pcs</th><th class="n">Total berat (kg)</th></tr></thead><tbody id="tWeight"></tbody></table></div></div>
+  <div class="card"><h2>Per Barang</h2><div class="scroll"><table><thead><tr><th>Barang</th><th class="n">Berat/unit (kg)</th><th class="n">Terjual (sak/pcs)</th><th class="n">Total berat (kg)</th></tr></thead><tbody id="tItem"></tbody></table></div></div>
+  <div class="card"><h2>Rincian Orderan</h2><div class="scroll"><table><thead><tr><th>Tanggal</th><th>Sales</th><th>Toko</th><th>Barang</th><th class="n">Kg</th><th></th></tr></thead><tbody id="tDetail"></tbody></table></div></div>
+</section>
+</main>
+
+<script>
+const ITEMS=[["511",null],["591",null],["594",null],["B4",null],["Beras Merah",25],["Bolt Donat/Kuning Fresh Pack 800gr",20],["Bolt Ikan/Ungu Fresh Pack",20],["Bolt Salmon/Pink Fresh Pack",20],["BR 1-7 RT",50],["BR 76",50],["BSG 101-R",50],["Cat Choize Adult Salmon Orange",20],["Cat Choize Adult Tuna Hijau",20],["Cat Choize Kitten Kuning",20],["Cat Choize Kitten Tuna Pink",20],["CILACAP",50],["EKO FEED-2",30],["EKO FEED-3",30],["EKO FEED-4",30],["EM4 pertanian",null],["EM4 perternakan",null],["Excel Ayam/Orange",20],["Excel Donat/Hijau",20],["Excel Ikan/Ungu",20],["Excel Kitten/Pink",20],["Excel Salmon/Kuning",20],["Felibit Donat/Pink",20],["Felibit Ikan/Merah",20],["Fertiphos 50kg",50],["Gold Coin Kenari 250gr",null],["Gold Coin Lovebird",null],["Gold Coin Pelet Kuning",null],["Gold Coin RL 450gr",null],["Gold Coin RL Keci/ 250gr",null],["Jagung Pecah",20],["KARAWANG 781",30],["KARAWANG 781-1",30],["KARAWANG 781-2",30],["KARAWANG 782-4",30],["KCL Mahkota 50 kg",50],["KEPALA KUDA",50],["kleci",null],["Longkung",null],["LP1",30],["LP2",30],["LP3",30],["Malco Adult Tuna",null],["Malco Kitten",null],["mestac duo 5x10",50],["Mestac Granul 5x10",50],["Mesti Paten Biru/ NPK Laoying 1kg",null],["N25/ NITREA 25KG",25],["N5/ NITREA 5KG",20],["N50/ NITREA 50KG",50],["Nitroku 20kg",20],["Nitroku 2kg",null],["NPK 161616 1kg Saprotan",50],["NPK 161616 20kg Saprotan",20],["NPK 161616 50kg Saprotan",50],["PF1000",20],["PF500",20],["PF800",20],["Phonska Plus 25 kg",25],["Prima Phonska 50 kg",50],["Profat",null],["Saprodap 25kg",25],["SD 781-1",30],["SD 781-2",30],["SD 781-3",30],["SD 782",30],["SD 782-2",30],["SD 782-3",30],["SKM Halus",null],["SKM kasar",null],["SP27 50 KG",50],["Suryafeed",50],["T51",50],["T78-2A",30],["T78-3A",30],["T78-4A",30],["Topsong As",null],["Topsong RL",null],["UM Ayam",null],["UM Kambing",null],["UM Sapi",null],["WB/WHEAT BRAN",50],["Wellmilk 1 kg",null],["ZA 50kg P.Tani",50]];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const fmt=n=>(Math.round(n*100)/100).toLocaleString("id-ID");
+const today=()=>ymd(new Date());
+let db=null,sales=[],att=[],orders=[],lines=[];
+
+function status(t){const s=$("status");s.textContent=t;s.classList.toggle("hide",!t)}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  ["absen","order","total"].forEach(t=>$(t).classList.toggle("hide",t!==b.dataset.t));
+  if(b.dataset.t==="total")renderTotal();
+});
+
+/* ---------- sales & absen ---------- */
+function renderSales(){
+  const opts=sales.map(s=>`<option>${esc(s)}</option>`).join("");
+  const keep={a:$("aSales").value,o:$("oSales").value,f:$("fSales").value};
+  $("aSales").innerHTML=opts||"<option value=''>(belum ada sales)</option>";
+  $("oSales").innerHTML=opts||"<option value=''>(belum ada sales)</option>";
+  $("fSales").innerHTML="<option value=''>Semua sales</option>"+opts;
+  if(keep.a)$("aSales").value=keep.a;if(keep.o)$("oSales").value=keep.o;if(keep.f)$("fSales").value=keep.f;
+}
+$("addSales").onclick=async()=>{
+  const n=$("newSales").value.trim();if(!n||!db)return;
+  try{await db.doc("sales/"+encodeURIComponent(n).replace(/%/g,"_")).set({name:n});$("newSales").value=""}catch(e){status("Gagal menyimpan: "+e.message)}
+};
+$("btnAbsen").onclick=async()=>{
+  const s=$("aSales").value;if(!s||!db){$("aMsg").innerHTML='<div class="msg">Pilih atau tambah nama sales dulu.</div>';return}
+  const now=new Date(),d=ymd(now),t=pad(now.getHours())+":"+pad(now.getMinutes());
+  if(att.some(a=>a.sales===s&&a.date===d)){$("aMsg").innerHTML=`<div class="msg">${esc(s)} sudah absen hari ini.</div>`;return}
+  try{await db.collection("attendance").add({sales:s,date:d,time:t,ts:now.getTime()});$("aMsg").innerHTML=`<div class="msg ok">Absen tercatat: ${esc(s)}, ${t}</div>`}
+  catch(e){status("Gagal absen: "+e.message)}
+};
+function renderAbsen(){
+  const rows=att.filter(a=>a.date===today()).sort((a,b)=>a.ts-b.ts);
+  $("aList").innerHTML=rows.map(a=>`<tr><td>${esc(a.sales)}</td><td>${a.time}</td></tr>`).join("")||'<tr><td colspan="2" class="mu">Belum ada yang absen.</td></tr>';
+}
+
+/* ---------- orderan ---------- */
+function newLine(){lines.push({name:"",qty:1,unit:null})}
+function itemWeight(n){const i=ITEMS.find(x=>x[0]===n);return i?i[1]:undefined}
+function lineKg(l){return (+l.qty||0)*(+l.unit||0)}
+function renderLines(){
+  const opts='<option value="">Pilih barang…</option>'+ITEMS.map(i=>`<option>${esc(i[0])}</option>`).join("");
+  $("lines").innerHTML=lines.map((l,i)=>{
+    const fixed=itemWeight(l.name)!=null;
+    return `<div class="line"><div class="row"><div><select data-i="${i}" data-f="name">${opts}</select></div><button class="x xs" data-del="${i}">×</button></div>
+    <div class="row"><div class="sm"><label>Jumlah</label><input type="number" min="1" inputmode="numeric" value="${l.qty}" data-i="${i}" data-f="qty"></div>
+    <div><label>${fixed?"Berat per unit (kg)":"Berat per BOX/unit (kg) — isi manual"}</label><input type="number" min="0" step="0.1" inputmode="decimal" value="${l.unit??""}" ${fixed?"readonly":""} data-i="${i}" data-f="unit"></div>
+    <div class="sm"><label>Total kg</label><div style="padding:10px 0;font-weight:700" id="lk${i}">${fmt(lineKg(l))}</div></div></div></div>`}).join("");
+  document.querySelectorAll("#lines select").forEach(s=>s.value=lines[s.dataset.i].name);
+  updTot();
+}
+function updTot(){$("oTot").textContent=fmt(lines.reduce((a,l)=>a+lineKg(l),0));lines.forEach((l,i)=>{const e=$("lk"+i);if(e)e.textContent=fmt(lineKg(l))})}
+$("lines").addEventListener("change",e=>{
+  const t=e.target,i=+t.dataset.i;if(isNaN(i))return;
+  if(t.dataset.f==="name"){lines[i].name=t.value;const w=itemWeight(t.value);lines[i].unit=w??null;renderLines()}
+});
+$("lines").addEventListener("input",e=>{
+  const t=e.target,i=+t.dataset.i;if(isNaN(i)||t.dataset.f==="name")return;
+  lines[i][t.dataset.f]=t.value===""?null:+t.value;updTot();
+});
+$("lines").addEventListener("click",e=>{const d=e.target.dataset.del;if(d!==undefined){lines.splice(+d,1);if(!lines.length)newLine();renderLines()}});
+$("addLine").onclick=()=>{newLine();renderLines()};
+$("saveOrder").onclick=async()=>{
+  const s=$("oSales").value,store=$("oStore").value.trim(),date=$("oDate").value;
+  const ls=lines.filter(l=>l.name&&+l.qty>0);
+  if(!db||!s||!store||!date||!ls.length){$("oMsg").innerHTML='<div class="msg">Lengkapi sales, tanggal, nama toko, dan minimal 1 barang.</div>';return}
+  const miss=ls.find(l=>!(+l.unit>0));
+  if(miss&&!confirm(`Berat "${miss.name}" masih kosong (dihitung 0 kg). Tetap simpan?`))return;
+  const data={sales:s,store,date,ts:Date.now(),lines:ls.map(l=>({name:l.name,qty:+l.qty,unit:+l.unit||0,kg:lineKg(l)})),kg:ls.reduce((a,l)=>a+lineKg(l),0)};
+  try{await db.collection("orders").add(data);lines=[];newLine();$("oStore").value="";renderLines();$("oMsg").innerHTML=`<div class="msg ok">Orderan tersimpan (${fmt(data.kg)} kg).</div>`}
+  catch(e){status("Gagal menyimpan: "+e.message)}
+};
+
+/* ---------- total ---------- */
+function setRange(q){
+  const to=new Date(),from=new Date();
+  if(q==="m")from.setDate(1);else from.setDate(from.getDate()-(+q-1));
+  $("fFrom").value=ymd(from);$("fTo").value=ymd(to);renderTotal();
+}
+document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>setRange(b.dataset.q));
+["fFrom","fTo","fSales"].forEach(id=>$(id).addEventListener("input",renderTotal));
+function group(list,keyFn,add){const m={};list.forEach(o=>add(m,o,keyFn));return Object.entries(m)}
+function renderTotal(){
+  const f=$("fFrom").value,t=$("fTo").value,sf=$("fSales").value;
+  const list=orders.filter(o=>(!f||o.date>=f)&&(!t||o.date<=t)&&(!sf||o.sales===sf)).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.ts-a.ts);
+  const kg=list.reduce((a,o)=>a+o.kg,0),stores=new Set(list.map(o=>o.store.toLowerCase()));
+  $("stats").innerHTML=`<div class="stat"><b>${fmt(kg)} kg</b><span>Total berat</span></div><div class="stat"><b>${list.length}</b><span>Orderan</span></div><div class="stat"><b>${stores.size}</b><span>Toko</span></div><div class="stat"><b>${fmt(list.reduce((a,o)=>a+o.lines.reduce((x,l)=>x+l.qty,0),0))}</b><span>Total sak/pcs</span></div>`;
+  const agg=(keyFn)=>{const m={};list.forEach(o=>{const k=keyFn(o);m[k]=m[k]||{n:0,kg:0};m[k].n++;m[k].kg+=o.kg});return Object.entries(m).sort((a,b)=>b[1].kg-a[1].kg)};
+  $("tSales").innerHTML=agg(o=>o.sales).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.n}</td><td class="n">${fmt(v.kg)}</td></tr>`).join("")||'<tr><td colspan="3" class="mu">Tidak ada data.</td></tr>';
+  $("tStore").innerHTML=agg(o=>o.store).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n">${v.n}</td><td class="n">${fmt(v.kg)}</td></tr>`).join("")||'<tr><td colspan="3" class="mu">Tidak ada data.</td></tr>';
+  const im={},wm={};list.forEach(o=>o.lines.forEach(l=>{const k=l.name+"|"+l.unit;im[k]=im[k]||{name:l.name,unit:l.unit,q:0,kg:0};im[k].q+=l.qty;im[k].kg+=l.kg;const w=wm[l.unit]=wm[l.unit]||{unit:l.unit,items:new Set(),q:0,kg:0};w.items.add(l.name);w.q+=l.qty;w.kg+=l.kg}));
+  $("tWeight").innerHTML=Object.values(wm).sort((a,b)=>b.unit-a.unit).map(w=>`<tr><td>${w.unit>0?fmt(w.unit)+" kg":"Berat belum diisi"}</td><td class="n">${w.items.size}</td><td class="n">${fmt(w.q)}</td><td class="n">${fmt(w.kg)}</td></tr>`).join("")||'<tr><td colspan="4" class="mu">Tidak ada data.</td></tr>';
+  $("tItem").innerHTML=Object.values(im).sort((a,b)=>b.kg-a.kg).map(v=>`<tr><td>${esc(v.name)}</td><td class="n">${v.unit>0?fmt(v.unit):"-"}</td><td class="n">${fmt(v.q)}</td><td class="n">${fmt(v.kg)}</td></tr>`).join("")||'<tr><td colspan="4" class="mu">Tidak ada data.</td></tr>';
+  $("tDetail").innerHTML=list.map(o=>`<tr><td>${o.date}</td><td>${esc(o.sales)}</td><td>${esc(o.store)}</td><td style="white-space:normal;min-width:200px">${o.lines.map(l=>esc(l.name)+" ×"+l.qty).join(", ")}</td><td class="n">${fmt(o.kg)}</td><td><button class="x" data-rm="${o.id}" title="Hapus">×</button></td></tr>`).join("")||'<tr><td colspan="6" class="mu">Tidak ada data.</td></tr>';
+}
+$("tDetail").addEventListener("click",async e=>{
+  const id=e.target.dataset.rm;if(!id||!confirm("Hapus orderan ini?"))return;
+  try{await db.doc("orders/"+id).delete()}catch(err){status("Tidak bisa menghapus: "+err.message)}
+});
+
+/* ---------- init ---------- */
+$("oDate").value=today();newLine();renderLines();setRange("30");
+document.querySelector('[data-q="30"]').click();
+(async()=>{
+  try{db=await claude.use("db")}catch(e){db=null}
+  if(!db){status("Database belum tersedia. Buka lewat link artifact dan login supaya data tersimpan.");return}
+  const fail=e=>status("Gagal memuat data: "+(e&&e.message));
+  db.collection("sales").onSnapshot(s=>{sales=s.docs.map(d=>d.data().name).filter(Boolean).sort();renderSales()},fail);
+  db.collection("attendance").onSnapshot(s=>{att=s.docs.map(d=>d.data());renderAbsen()},fail);
+  db.collection("orders").onSnapshot(s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));
+    $("storeList").innerHTML=[...new Set(orders.map(o=>o.store))].map(x=>`<option value="${esc(x)}">`).join("");renderTotal()},fail);
+})();
+renderAbsen();
+</script>
+</body>
+</html>
