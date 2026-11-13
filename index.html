@@ -104,7 +104,23 @@ const pad=n=>String(n).padStart(2,"0");
 const ymd=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const fmt=n=>(Math.round(n*100)/100).toLocaleString("id-ID");
 const today=()=>ymd(new Date());
-let db=null,sales=[],att=[],orders=[],lines=[];
+let db=false,sales=[],att=[],orders=[],lines=[];
+/* ====== ISI DUA BARIS INI DARI SUPABASE (Project Settings > API) ====== */
+const SB_URL="https://vaxwleiyuwwufzozrged.supabase.co",SB_KEY="sb_publishable_Oolj5ferpEZc_8n9rB9Ikg_nKa6t2VT";
+const api=async(path,opt={})=>{
+  const r=await fetch(SB_URL+"/rest/v1/"+path,{...opt,headers:{apikey:SB_KEY,...(SB_KEY.startsWith("eyJ")?{Authorization:"Bearer "+SB_KEY}:{}),"Content-Type":"application/json",Prefer:"return=minimal",...(opt.headers||{})}});
+  if(!r.ok){let m=r.statusText;try{m=(await r.json()).message||m}catch(e){}throw new Error(m)}
+  const t=await r.text();return t?JSON.parse(t):null;
+};
+async function load(){
+  try{
+    const [s,a,o]=await Promise.all([api("sales?select=name&order=name"),api("attendance?select=*&date=eq."+today()),api("orders?select=*&order=ts.desc&limit=5000")]);
+    sales=s.map(x=>x.name);att=a.map(x=>({...x,ts:+x.ts}));orders=o.map(x=>({...x,ts:+x.ts,kg:+x.kg}));
+    renderSales();renderAbsen();
+    $("storeList").innerHTML=[...new Set(orders.map(x=>x.store))].map(x=>`<option value="${esc(x)}">`).join("");
+    renderTotal();status("");
+  }catch(e){status("Gagal memuat data: "+e.message)}
+}
 
 function status(t){const s=$("status");s.textContent=t;s.classList.toggle("hide",!t)}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
@@ -124,13 +140,13 @@ function renderSales(){
 }
 $("addSales").onclick=async()=>{
   const n=$("newSales").value.trim();if(!n||!db)return;
-  try{await db.doc("sales/"+encodeURIComponent(n).replace(/%/g,"_")).set({name:n});$("newSales").value=""}catch(e){status("Gagal menyimpan: "+e.message)}
+  try{await api("sales",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({name:n})});$("newSales").value="";await load()}catch(e){status("Gagal menyimpan: "+e.message)}
 };
 $("btnAbsen").onclick=async()=>{
   const s=$("aSales").value;if(!s||!db){$("aMsg").innerHTML='<div class="msg">Pilih atau tambah nama sales dulu.</div>';return}
   const now=new Date(),d=ymd(now),t=pad(now.getHours())+":"+pad(now.getMinutes());
   if(att.some(a=>a.sales===s&&a.date===d)){$("aMsg").innerHTML=`<div class="msg">${esc(s)} sudah absen hari ini.</div>`;return}
-  try{await db.collection("attendance").add({sales:s,date:d,time:t,ts:now.getTime()});$("aMsg").innerHTML=`<div class="msg ok">Absen tercatat: ${esc(s)}, ${t}</div>`}
+  try{await api("attendance",{method:"POST",body:JSON.stringify({sales:s,date:d,time:t,ts:now.getTime()})});await load();$("aMsg").innerHTML=`<div class="msg ok">Absen tercatat: ${esc(s)}, ${t}</div>`}
   catch(e){status("Gagal absen: "+e.message)}
 };
 function renderAbsen(){
@@ -171,7 +187,7 @@ $("saveOrder").onclick=async()=>{
   const miss=ls.find(l=>!(+l.unit>0));
   if(miss&&!confirm(`Berat "${miss.name}" masih kosong (dihitung 0 kg). Tetap simpan?`))return;
   const data={sales:s,store,date,ts:Date.now(),lines:ls.map(l=>({name:l.name,qty:+l.qty,unit:+l.unit||0,kg:lineKg(l)})),kg:ls.reduce((a,l)=>a+lineKg(l),0)};
-  try{await db.collection("orders").add(data);lines=[];newLine();$("oStore").value="";renderLines();$("oMsg").innerHTML=`<div class="msg ok">Orderan tersimpan (${fmt(data.kg)} kg).</div>`}
+  try{await api("orders",{method:"POST",body:JSON.stringify(data)});await load();lines=[];newLine();$("oStore").value="";renderLines();$("oMsg").innerHTML=`<div class="msg ok">Orderan tersimpan (${fmt(data.kg)} kg).</div>`}
   catch(e){status("Gagal menyimpan: "+e.message)}
 };
 
@@ -199,21 +215,14 @@ function renderTotal(){
 }
 $("tDetail").addEventListener("click",async e=>{
   const id=e.target.dataset.rm;if(!id||!confirm("Hapus orderan ini?"))return;
-  try{await db.doc("orders/"+id).delete()}catch(err){status("Tidak bisa menghapus: "+err.message)}
+  try{await api("orders?id=eq."+encodeURIComponent(id),{method:"DELETE"});await load()}catch(err){status("Tidak bisa menghapus: "+err.message)}
 });
 
 /* ---------- init ---------- */
 $("oDate").value=today();newLine();renderLines();setRange("30");
 document.querySelector('[data-q="30"]').click();
-(async()=>{
-  try{db=await claude.use("db")}catch(e){db=null}
-  if(!db){status("Database belum tersedia. Buka lewat link artifact dan login supaya data tersimpan.");return}
-  const fail=e=>status("Gagal memuat data: "+(e&&e.message));
-  db.collection("sales").onSnapshot(s=>{sales=s.docs.map(d=>d.data().name).filter(Boolean).sort();renderSales()},fail);
-  db.collection("attendance").onSnapshot(s=>{att=s.docs.map(d=>d.data());renderAbsen()},fail);
-  db.collection("orders").onSnapshot(s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));
-    $("storeList").innerHTML=[...new Set(orders.map(o=>o.store))].map(x=>`<option value="${esc(x)}">`).join("");renderTotal()},fail);
-})();
+if(SB_URL.startsWith("ISI_")||SB_KEY.startsWith("ISI_")){status("Isi SB_URL dan SB_KEY di dalam file ini dengan data dari Supabase.")}
+else{db=true;load();setInterval(load,15000)}
 renderAbsen();
 </script>
 </body>
